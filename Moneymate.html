@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>My Money Mate</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root{
+  --primary:#3cb371;
+  --secondary:#4facfe;
+  --accent:#ffde59;
+  --text:#333;
+  --bg-light:#f9f9f9;
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Nunito Sans', sans-serif;}
+body{background:linear-gradient(135deg,#a8edea 0%,#fed6e3 100%);min-height:100vh;display:flex;justify-content:center;align-items:flex-start;padding:2rem;}
+.container{width:95%;max-width:980px;background:#fff;border-radius:1rem;padding:2rem;box-shadow:0 10px 30px rgba(0,0,0,0.1);}
+.page{display:none;flex-direction:column;animation:fadeIn 0.7s;}
+.page.active{display:flex;}
+h1,h2,h3{color:var(--text);margin-bottom:1rem;text-align:center;}
+h1{font-size:2rem;}
+h2{font-size:1.5rem;}
+h3{font-size:1.2rem;}
+input, select, button{padding:0.6rem 0.9rem;margin:0.4rem 0;border:none;border-radius:0.8rem;font-size:0.98rem;}
+input, select{width:100%;box-shadow:0 4px 6px rgba(0,0,0,0.06);}
+button{cursor:pointer;background: linear-gradient(90deg,var(--secondary),var(--primary));color:#fff;font-weight:600;transition:all 0.18s;border-radius:0.8rem;}
+button:hover{transform:scale(1.03);box-shadow:0 6px 12px rgba(0,0,0,0.12);}
+table{width:100%;border-collapse:collapse;margin-top:1rem;font-size:0.95rem;}
+th,td{padding:0.6rem;text-align:center;vertical-align:middle;border-radius:6px;}
+th{background: linear-gradient(90deg,var(--secondary),var(--primary));color:#fff;}
+td{background:#fdfdfd;}
+tr:nth-child(even) td{background:#f7f7f7;}
+.summary-tip{margin-top:1rem;text-align:center;font-style:italic;color:#555;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);} }
+footer{text-align:center;margin-top:1rem;font-size:0.85rem;color:#666;}
+
+/* Numeric input styling */
+.amount-input{
+  min-width:110px;
+  width:100%;
+  max-width:180px;
+  padding:0.5rem 0.7rem;
+  border-radius:0.6rem;
+  box-shadow:0 3px 6px rgba(0,0,0,0.06) inset;
+  text-align:right;
+  font-weight:600;
+  font-family: 'Poppins', 'Nunito Sans', sans-serif;
+  font-size:0.98rem;
+}
+
+/* date and name inputs */
+.date-input{min-width:120px;max-width:160px;padding:0.45rem 0.6rem;}
+.name-select{min-width:160px;max-width:260px;padding:0.45rem 0.6rem;text-align:left;}
+td .tight{padding:0.2rem;}
+
+/* responsive table scrolling */
+@media (max-width:820px){
+  .container{padding:1rem;}
+  table, thead, tbody, th, td, tr {display:block;}
+  thead {display:none;}
+  tr {margin-bottom:0.6rem;border-radius:0.6rem;overflow:hidden;}
+  td {text-align:left;padding:0.6rem;border-bottom:1px solid #eee;}
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Welcome Page -->
+  <div class="page active" id="welcomePage">
+    <h1>💰 Welcome to My Money Mate</h1>
+    <p style="text-align:center;font-style:italic;">Save Money, Secure Tomorrow.</p>
+    <input type="text" id="username" placeholder="Enter your name…">
+    <div style="display:flex;gap:0.5rem;justify-content:center;">
+      <button onclick="nextPage('weekPage')">Next</button>
+    </div>
+  </div>
+
+  <!-- Week Selection Page -->
+  <div class="page" id="weekPage">
+    <h2>📅 Select your week</h2>
+    <input type="date" id="startDate">
+    <p id="weekMsg"></p>
+    <div style="display:flex;gap:0.5rem;justify-content:center;">
+      <button onclick="nextPage('welcomePage')">⬅️ Back</button>
+      <button onclick="saveWeek()">Save and Next</button>
+    </div>
+  </div>
+
+  <!-- Frequent Items Page -->
+  <div class="page" id="frequentPage">
+    <h3>💰 What incomes come to you frequently?</h3>
+    <input type="text" id="frequentIncomes" placeholder="Salary, refund, etc.">
+    <h3>💸 And what expenses do you often have?</h3>
+    <input type="text" id="frequentExpenses" placeholder="Food, transport, etc.">
+    <small>Separate items with commas</small>
+    <div style="display:flex; gap:0.5rem; margin-top:1rem; justify-content:center;">
+      <button onclick="nextPage('weekPage')">⬅️ Back</button>
+      <button onclick="saveFrequentItems()">Save</button>
+      <button onclick="nextPage('openingBalancePage')">Next ➡️</button>
+    </div>
+  </div>
+
+  <!-- Opening Balance Page -->
+  <div class="page" id="openingBalancePage">
+    <h2>💰 Opening Balance</h2>
+    <p>Enter the amount of money you have at the start of this week:</p>
+    <input type="text" id="openingBalanceInput" class="amount-input" placeholder="0">
+    <div style="display:flex;gap:0.5rem;justify-content:center;">
+      <button onclick="nextPage('frequentPage')">⬅️ Back</button>
+      <button onclick="saveOpeningBalance()">Save and Next</button>
+    </div>
+  </div>
+
+  <!-- Main Table Page -->
+  <div class="page" id="tablePage">
+    <h2>📊 Transactions</h2>
+    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.5rem;">
+      <button onclick="addRow()">+ Add Row</button>
+      <button onclick="saveData()">💾 Save Data</button>
+      <button onclick="nextPage('analysisPage')">➡️ Next → Analysis</button>
+    </div>
+    <div style="overflow:auto;">
+      <table id="transactionTable">
+        <thead>
+          <tr>
+            <th style="min-width:120px;">Date</th>
+            <th style="min-width:110px;">Balance B/F</th>
+            <th style="min-width:180px;">Income Name</th>
+            <th style="min-width:140px;">Income Amount</th>
+            <th style="min-width:180px;">Expense Name</th>
+            <th style="min-width:140px;">Expense Amount</th>
+            <th style="min-width:120px;">Balance</th>
+            <th style="min-width:80px;">Action</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Analysis Page -->
+  <div class="page" id="analysisPage">
+    <h2>📈 Analysis</h2>
+    <h3>Income Summary</h3>
+    <table id="incomeSummaryTable">
+      <thead><tr><th>Date</th><th>Total Income</th></tr></thead>
+      <tbody></tbody>
+    </table>
+
+    <h3>Expense Summary</h3>
+    <table id="expenseSummaryTable">
+      <thead><tr><th>Category</th><th>Total Expense</th></tr></thead>
+      <tbody></tbody>
+    </table>
+
+    <h3>Daily Expense Totals</h3>
+    <table id="dailyExpenseTable">
+      <thead><tr><th>Date</th><th>Total Expenses</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <p class="summary-tip" id="dailyExpenseTip"></p>
+
+    <canvas id="expensePieChart" style="margin-top:1rem;max-width:420px;"></canvas>
+    <p class="summary-tip" id="expenseTip"></p>
+    <div style="display:flex;justify-content:center;margin-top:0.6rem;">
+      <button onclick="nextPage('tablePage')">⬅️ Back to Table</button>
+      <button onclick="downloadSummary()">⬇️ Save Summary</button>
+    </div>
+  </div>
+
+  <footer>Made for individuals by <strong>Serendib Solutions</strong></footer>
+</div>
+
+<script>
+let username = localStorage.getItem('username')||'';
+document.getElementById('username').value = username;
+
+function nextPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+/* Week Page logic */
+let startDate='', endDate='';
+if(localStorage.getItem('startDate')){
+  startDate = localStorage.getItem('startDate');
+  endDate = localStorage.getItem('endDate');
+  document.getElementById('startDate').value = startDate;
+  document.getElementById('weekMsg').innerText = `Ready to record transactions from ${startDate} to ${endDate}.`;
+}
+document.getElementById('startDate').addEventListener('change', function(){
+  startDate = this.value;
+  if (!startDate) { endDate = ''; document.getElementById('weekMsg').innerText=''; return; }
+  let d = new Date(startDate);
+  d.setDate(d.getDate()+6);
+  endDate = d.toISOString().slice(0,10);
+  document.getElementById('weekMsg').innerText = `Ready to record transactions from ${startDate} to ${endDate}.`;
+});
+function saveWeek(){
+  if(!startDate){ alert('Please pick a start date'); return; }
+  localStorage.setItem('startDate', startDate);
+  localStorage.setItem('endDate', endDate);
+  nextPage('frequentPage');
+}
+
+/* Frequent Items */
+if(localStorage.getItem('frequentIncomes')) document.getElementById('frequentIncomes').value = localStorage.getItem('frequentIncomes');
+if(localStorage.getItem('frequentExpenses')) document.getElementById('frequentExpenses').value = localStorage.getItem('frequentExpenses');
+function saveFrequentItems(){
+  localStorage.setItem('frequentIncomes', document.getElementById('frequentIncomes').value);
+  localStorage.setItem('frequentExpenses', document.getElementById('frequentExpenses').value);
+  populateTable(); // update table dropdowns automatically
+  alert('✅ Frequent items saved!');
+}
+
+/* Opening Balance */
+if(localStorage.getItem('openingBalance')) document.getElementById('openingBalanceInput').value = Number(localStorage.getItem('openingBalance')).toLocaleString();
+function saveOpeningBalance(){
+  let val = Number( document.getElementById('openingBalanceInput').value.replace(/,/g,'') ) || 0;
+  localStorage.setItem('openingBalance', val);
+  populateTable(); // recalc table balances automatically
+  nextPage('tablePage');
+}
+
+/* Transactions table */
+let transactions = JSON.parse(localStorage.getItem('transactions')||'[]');
+const tableBody = document.querySelector('#transactionTable tbody');
+
+function populateTable(){
+  tableBody.innerHTML = '';
+  let totalIncome=0, totalExpense=0;
+
+  // first calculate balances
+  let prevBalance = Number(localStorage.getItem('openingBalance')||0);
+  transactions.forEach(t=>{
+    t.incomeAmount = Number(t.incomeAmount)||0;
+    t.expenseAmount = Number(t.expenseAmount)||0;
+    t.balanceBF = prevBalance;
+    t.balance = t.balanceBF + t.incomeAmount - t.expenseAmount;
+    prevBalance = t.balance;
+  });
+
+  transactions.forEach((t,i)=>{
+    t.incomeName = t.incomeName || 'Other';
+    t.expenseName = t.expenseName || 'Other';
+    let tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td><input class="date-input" type="date" value="${t.date||''}" onchange="updateTransaction(${i},'date',this.value)"></td>
+      <td class="tight">${t.balanceBF.toLocaleString()}</td>
+      <td>${incomeDropdown(t.incomeName,i)}</td>
+      <td><input class="amount-input" type="text" value="${t.incomeAmount.toLocaleString()}" 
+           oninput="updateTransaction(${i},'incomeAmount',this.value)" 
+           onblur="this.value = Number(this.value.replace(/,/g,'')||0).toLocaleString()"></td>
+      <td>${expenseDropdown(t.expenseName,i)}</td>
+      <td><input class="amount-input" type="text" value="${t.expenseAmount.toLocaleString()}" 
+           oninput="updateTransaction(${i},'expenseAmount',this.value)" 
+           onblur="this.value = Number(this.value.replace(/,/g,'')||0).toLocaleString()"></td>
+      <td class="tight">${t.balance.toLocaleString()}</td>
+      <td><button onclick="deleteRow(${i})">Delete</button></td>
+    `;
+    tableBody.appendChild(tr);
+    totalIncome+=t.incomeAmount;
+    totalExpense+=t.expenseAmount;
+  });
+
+  let trTotal=document.createElement('tr');
+  trTotal.innerHTML=`
+    <td colspan="3" style="text-align:right;font-weight:600;">Totals:</td>
+    <td style="font-weight:600;">${totalIncome.toLocaleString()}</td>
+    <td></td>
+    <td style="font-weight:600;">${totalExpense.toLocaleString()}</td>
+    <td style="font-weight:600;">${(totalIncome-totalExpense).toLocaleString()}</td>
+    <td></td>
+  `;
+  tableBody.appendChild(trTotal);
+
+  updateAnalysis();
+}
+
+function incomeDropdown(selected,i){
+  let options=(localStorage.getItem('frequentIncomes')||'').split(',').map(x=>x.trim()).filter(x=>x);
+  options.unshift('Other');
+  let sel = `<select class="name-select" onchange="handleOther(this,${i},'income')">`;
+  options.forEach(o=> sel += `<option ${o===selected?'selected':''}>${o}</option>`);
+  sel += `</select>`;
+  return sel;
+}
+
+function expenseDropdown(selected,i){
+  let options=(localStorage.getItem('frequentExpenses')||'').split(',').map(x=>x.trim()).filter(x=>x);
+  options.unshift('Other');
+  let sel = `<select class="name-select" onchange="handleOther(this,${i},'expense')">`;
+  options.forEach(o=> sel += `<option ${o===selected?'selected':''}>${o}</option>`);
+  sel += `</select>`;
+  return sel;
+}
+
+function handleOther(sel,i,type){
+  if(sel.value==='Other'){
+    let val=prompt('Write down your new '+type+' name:');
+    if(!val) return;
+    transactions[i][type+'Name']=val;
+    let key=(type==='income')?'frequentIncomes':'frequentExpenses';
+    let arr=(localStorage.getItem(key)||'').split(',').map(x=>x.trim()).filter(x=>x);
+    if(!arr.includes(val)) arr.push(val);
+    localStorage.setItem(key,arr.join(','));
+    transactions[i][ (type==='income'? 'incomeName':'expenseName') ]=val;
+  } else transactions[i][ (type==='income'? 'incomeName':'expenseName') ]=sel.value;
+  populateTable();
+}
+
+function addRow(){
+  let lastDate = transactions.length ? new Date(transactions[transactions.length-1].date) : (startDate ? new Date(startDate) : new Date());
+  if(transactions.length) lastDate.setDate(lastDate.getDate()+1);
+  let balanceBF = transactions.length ? transactions[transactions.length-1].balance : Number(localStorage.getItem('openingBalance')||0);
+  let newRow = {date:lastDate.toISOString().slice(0,10), balanceBF:balanceBF, incomeName:'Other', incomeAmount:0, expenseName:'Other', expenseAmount:0, balance:balanceBF};
+  transactions.push(newRow);
+  populateTable();
+}
+
+function deleteRow(i){ transactions.splice(i,1); populateTable(); }
+function updateTransaction(i,field,value){
+  if(!transactions[i]) return;
+  if(field==='incomeAmount' || field==='expenseAmount'){
+    let clean=value.replace(/,/g,'').trim();
+    transactions[i][field] = clean===''?0:Number(clean);
+  } else transactions[i][field]=value;
+  populateTable(); // recalc balances automatically
+}
+function saveData(){ localStorage.setItem('transactions', JSON.stringify(transactions)); alert('✅ Data saved!'); }
+populateTable();
+
+/* Username save */
+document.getElementById('username').addEventListener('change', e=>{
+  username = e.target.value.trim(); if(username) localStorage.setItem('username',username);
+});
+
+/* Analysis */
+function updateAnalysis(){
+  let dailyIncome={}, dailyExpense={}, categoryExpense={};
+  transactions.forEach(t=>{
+    dailyIncome[t.date] = (dailyIncome[t.date]||0) + t.incomeAmount;
+    dailyExpense[t.date] = (dailyExpense[t.date]||0) + t.expenseAmount;
+    categoryExpense[t.expenseName] = (categoryExpense[t.expenseName]||0)+t.expenseAmount;
+  });
+
+  // Income summary
+  let incTable = document.querySelector('#incomeSummaryTable tbody'); incTable.innerHTML='';
+  for(let d in dailyIncome){
+    let tr=document.createElement('tr');
+    tr.innerHTML=`<td>${d}</td><td>${dailyIncome[d].toLocaleString()}</td>`;
+    incTable.appendChild(tr);
+  }
+
+  // Expense summary by category
+  let expTable=document.querySelector('#expenseSummaryTable tbody'); expTable.innerHTML='';
+  for(let cat in categoryExpense){
+    let tr=document.createElement('tr');
+    tr.innerHTML=`<td>${cat}</td><td>${categoryExpense[cat].toLocaleString()}</td>`;
+    expTable.appendChild(tr);
+  }
+
+  // Daily expense totals
+  let dailyTable = document.querySelector('#dailyExpenseTable tbody'); dailyTable.innerHTML='';
+  for(let d in dailyExpense){
+    let tr=document.createElement('tr');
+    tr.innerHTML=`<td>${d}</td><td>${dailyExpense[d].toLocaleString()}</td>`;
+    dailyTable.appendChild(tr);
+  }
+
+  // Pie chart
+  const ctx = document.getElementById('expensePieChart').getContext('2d');
+  if(window.expChart) window.expChart.destroy();
+  window.expChart = new Chart(ctx,{
+    type:'pie',
+    data:{
+      labels:Object.keys(categoryExpense),
+      datasets:[{label:'Expenses',data:Object.values(categoryExpense),backgroundColor:['#4facfe','#3cb371','#ffde59','#ff6b6b','#6b5b95','#f78fb3','#00d2d3']}]
+    },
+    options:{responsive:true,plugins:{legend:{position:'bottom'}}}
+  });
+}
+function downloadSummary(){
+  let data = {incomeSummary:Object.fromEntries(Object.entries(JSON.parse(JSON.stringify(transactions))).map((_,i)=>[transactions[i].date,transactions[i].incomeAmount])),
+              expenseSummary:Object.fromEntries(Object.entries(JSON.parse(JSON.stringify(transactions))).map((_,i)=>[transactions[i].expenseName,transactions[i].expenseAmount])),
+              dailyExpense:Object.fromEntries(Object.entries(JSON.parse(JSON.stringify(transactions))).map((_,i)=>[transactions[i].date,transactions[i].expenseAmount]))};
+  let blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  let a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='summary.json'; a.click();
+}
+</script>
+</body>
+</html>
